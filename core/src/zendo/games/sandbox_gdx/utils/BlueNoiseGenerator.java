@@ -1,0 +1,83 @@
+package zendo.games.sandbox_gdx.utils;
+
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class BlueNoiseGenerator {
+
+    private static final float default_annulus_radius = 10f;
+    private static final int default_create_attempts = 30;
+
+    private int numCreateAttempts;
+    private float annulusRadius;
+    private List<Vector2> samples;
+    private Rectangle bounds;
+
+    public BlueNoiseGenerator(Rectangle bounds) {
+        this(default_annulus_radius, default_create_attempts, bounds);
+    }
+
+    public BlueNoiseGenerator(float annulusRadius, int numCreateAttempts, Rectangle bounds) {
+        this.annulusRadius = annulusRadius;
+        this.numCreateAttempts = numCreateAttempts;
+        this.bounds = bounds;
+        generate();
+    }
+
+    public void generate() {
+        Vector2 initialSample = new Vector2(
+                bounds.x + MathUtils.random(bounds.width),
+                bounds.y + MathUtils.random(bounds.height)
+        );
+        samples = new ArrayList<Vector2>();
+        samples.add(initialSample);
+
+        List<Vector2> activeList = new ArrayList<Vector2>();
+        activeList.add(initialSample);
+        while (activeList.size() > 0) {
+            int lastActiveIndex = activeList.size() - 1;
+            int currentActiveIndex = MathUtils.random(lastActiveIndex);
+            Collections.swap(activeList,  lastActiveIndex, currentActiveIndex);
+            Vector2 currentSample = activeList.get(lastActiveIndex);
+
+            boolean didCreateSample = false;
+            for (int i = 0; i < numCreateAttempts; ++i) {
+                float theta = MathUtils.random(360f);
+                float radius = MathUtils.random(annulusRadius) + annulusRadius;
+                Vector2 newSample = new Vector2(
+                        radius * MathUtils.cosDeg(theta),
+                        radius * MathUtils.sinDeg(theta)
+                ).add(currentSample);
+
+                boolean isValidSample = true;
+                for (Vector2 existingSample : samples) {
+                    if (newSample.dst(existingSample) <= annulusRadius) {
+                        isValidSample = false;
+                        break;
+                    }
+                }
+
+                if (isValidSample) {
+                    if (bounds.x <= newSample.x && newSample.x < bounds.x + bounds.width
+                     && bounds.y <= newSample.y && newSample.y < bounds.y + bounds.height) {
+                        samples.add(newSample);
+                        activeList.add(newSample);
+                        didCreateSample = true;
+                    }
+                }
+            }
+
+            if (!didCreateSample) {
+                activeList.remove(lastActiveIndex);
+            }
+        }
+    }
+
+    public List<Vector2> getSamples() { return samples; }
+
+}

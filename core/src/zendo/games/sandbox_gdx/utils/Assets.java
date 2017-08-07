@@ -31,6 +31,7 @@ public class Assets {
 
     public static Texture testTexture;
     public static Texture whitePixel;
+    public static Texture circleTexture;
 
     public static boolean initialized;
 
@@ -60,6 +61,7 @@ public class Assets {
         mgr = new AssetManager();
         mgr.load("badlogic.jpg", Texture.class);
         mgr.load("white-pixel.png", Texture.class);
+        mgr.load("circle.png", Texture.class);
         //...
 
         batch = new SpriteBatch();
@@ -73,9 +75,8 @@ public class Assets {
         initialized = true;
 
         testTexture = mgr.get("badlogic.jpg");
-        testTexture.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
-
         whitePixel = mgr.get("white-pixel.png");
+        circleTexture = mgr.get("circle.png");
 
         font = new BitmapFont(Gdx.files.internal("fonts/emulogic-16pt.fnt"));
         font.getData().markupEnabled = true;
