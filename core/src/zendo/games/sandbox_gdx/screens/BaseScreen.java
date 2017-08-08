@@ -17,14 +17,6 @@ public abstract class BaseScreen extends InputAdapter {
 
     public BaseScreen () {
         super();
-//        float aspect = Gdx.graphics.getWidth() / (float) Gdx.graphics.getHeight();
-//        camera = new OrthographicCamera(Config.gameWidth, Config.gameWidth / aspect);
-//        camera.translate(camera.viewportWidth / 2, camera.viewportHeight / 2, 0);
-//        camera.update();
-//        hudCamera = new OrthographicCamera(Config.gameWidth, Config.gameWidth / aspect);
-//        hudCamera.translate(hudCamera.viewportWidth / 2, hudCamera.viewportHeight / 2, 0);
-//        hudCamera.update();
-
         camera = new OrthographicCamera(Config.gameWidth, Config.gameHeight);
         camera.translate(camera.viewportWidth / 2, camera.viewportHeight / 2, 0);
         camera.update();
