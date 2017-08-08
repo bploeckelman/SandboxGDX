@@ -95,6 +95,21 @@ public class BlueNoiseGenerator {
                 activeList.remove(lastActiveIndex);
             }
         }
+
+        // Remove duplicate samples because I'm a terrible programmer
+        for (int i = samples.size() - 1; i >= 0; --i) {
+            boolean isDuplicate = false;
+            for (int j = samples.size() - 1; j >= 0; --j) {
+                if (i == j) continue;
+                if (samples.get(i) == samples.get(j)) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (isDuplicate) {
+                samples.remove(i);
+            }
+        }
     }
 
     public List<Vector2> getSamples() { return samples; }

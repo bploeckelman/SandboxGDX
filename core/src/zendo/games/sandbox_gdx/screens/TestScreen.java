@@ -33,13 +33,15 @@ public class TestScreen extends BaseScreen {
 
     private ShapeRenderer shapes;
 
+    private final float width  = 500;
+    private final float height = 500;
+    private final int   num_bounds_samples = 20;
+
     public TestScreen() {
         shapes = Assets.shapes;
 
-        float width = 500;
-        float height = 500;
         triangleBounds = new Rectangle(
-                camera.viewportWidth / 2f - width / 2f,
+                camera.viewportWidth  / 2f - width  / 2f,
                 camera.viewportHeight / 2f - height / 2f,
                 width, height
         );
@@ -50,6 +52,10 @@ public class TestScreen extends BaseScreen {
 
     @Override
     public void update(float dt) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            Gdx.app.exit();
+        }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             final float duration = 0.25f;
             Timeline.createSequence()
@@ -64,7 +70,7 @@ public class TestScreen extends BaseScreen {
                     .start(Assets.tween);
         }
 
-        float movementDt = 200 * dt * camera.zoom;
+        float movementDt = 500 * dt * camera.zoom;
         if (Gdx.input.isKeyPressed(Input.Keys.W)) {
             camera.translate(0, movementDt);
         }
@@ -89,6 +95,17 @@ public class TestScreen extends BaseScreen {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         shapes.setProjectionMatrix(camera.combined);
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        {
+            final float width = 3f;
+            shapes.setColor(Color.YELLOW);
+            shapes.rectLine(triangleBounds.x, triangleBounds.y, triangleBounds.x + triangleBounds.width, triangleBounds.y, width);
+            shapes.rectLine(triangleBounds.x, triangleBounds.y, triangleBounds.x, triangleBounds.y + triangleBounds.height, width);
+            shapes.rectLine(triangleBounds.x, triangleBounds.y + triangleBounds.height, triangleBounds.x + triangleBounds.width, triangleBounds.y + triangleBounds.height, width);
+            shapes.rectLine(triangleBounds.x + triangleBounds.width, triangleBounds.y, triangleBounds.x + triangleBounds.width, triangleBounds.y + triangleBounds.height, width);
+        }
+        shapes.end();
+
         shapes.begin(ShapeRenderer.ShapeType.Line);
         {
             shapes.setColor(Color.BLACK);
@@ -101,8 +118,7 @@ public class TestScreen extends BaseScreen {
                 float y3 = triangleVertices.get(triangleIndices.get(i + 2) * 2 + 1);
                 shapes.triangle(x1, y1, x2, y2, x3, y3);
             }
-            shapes.setColor(Color.YELLOW);
-            shapes.rect(triangleBounds.x, triangleBounds.y, triangleBounds.width, triangleBounds.height);
+
             shapes.setColor(Color.WHITE);
         }
         shapes.end();
@@ -202,7 +218,7 @@ public class TestScreen extends BaseScreen {
 
     private void generateTriangleVertices(Rectangle bounds) {
         if (blueNoiseGenerator == null) {
-            blueNoiseGenerator = new BlueNoiseGenerator(bounds, 20);
+            blueNoiseGenerator = new BlueNoiseGenerator(bounds, num_bounds_samples);
         } else {
             blueNoiseGenerator.generate();
         }
