@@ -11,7 +11,6 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import zendo.games.sandbox_gdx.utils.Assets;
 import zendo.games.sandbox_gdx.utils.BlueNoiseGenerator;
@@ -26,34 +25,29 @@ public class MeshScreen extends BaseScreen {
     ShapeRenderer shapes;
     PolygonSpriteBatch polys;
 
-    Array<Vector2> concaveSamples;
+    List<Vector2> concaveSamples;
     List<Vector2> samples;
     ZenPolygon polygon;
     ConcaveHull concaveHull;
 
-    float N;
+    float N = 1.5f;
 
     public MeshScreen() {
         shapes = Assets.shapes;
         polys = Assets.polys;
         polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-        final int num_samples = 100;
+        final int num_samples = 10;
         final int num_boundary_samples = 0;
         final float width = 100;
         final float height = 100;
         final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
         BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
-        List<Vector2> sourceSamples = pointsGenerator.getSamples();
-        // TODO: just throwing shit around because I'm super lazy
-        concaveSamples = new Array<Vector2>();
-        for (Vector2 sourceSample : sourceSamples) {
-            concaveSamples.add(sourceSample);
-        }
-        N = 2.0f;
+        this.concaveSamples = pointsGenerator.getSamples();
         concaveHull = new ConcaveHull(concaveSamples, N);
 
         camera.translate(-camera.viewportWidth / 2f, -camera.viewportHeight / 2f);
+        camera.zoom -= 0.5f;
         Gdx.input.setInputProcessor(this);
     }
 
@@ -62,23 +56,20 @@ public class MeshScreen extends BaseScreen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             Gdx.app.exit();
         }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-            final int num_samples = 100;
+            final int num_samples = 10;
             final int num_boundary_samples = 0;
             final float width = 100;
             final float height = 100;
             final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
             BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
-            List<Vector2> sourceSamples = pointsGenerator.getSamples();
-            // TODO: just throwing shit around because I'm super lazy
-            concaveSamples = new Array<Vector2>();
-            for (Vector2 sourceSample : sourceSamples) {
-                concaveSamples.add(sourceSample);
-            }
+            concaveSamples = pointsGenerator.getSamples();
             concaveHull = new ConcaveHull(concaveSamples, N);
         }
+
         if (Gdx.input.isKeyJustPressed(Input.Keys.EQUALS)) {
             N += 0.1f;
         }
@@ -103,6 +94,12 @@ public class MeshScreen extends BaseScreen {
             Assets.font.draw(batch, "N: " + N, 10, 30);
         }
         batch.end();
+
+        shapes.setProjectionMatrix(camera.combined);
+        concaveHull.renderConvexHull(shapes);
+        concaveHull.renderConcaveHull(shapes);
+        concaveHull.renderConvexHullPoints(shapes);
+
         /*
         polys.setProjectionMatrix(camera.combined);
         polys.begin();
@@ -117,13 +114,14 @@ public class MeshScreen extends BaseScreen {
         polys.end();
         */
 
+        /*
         shapes.setProjectionMatrix(camera.combined);
         shapes.begin(ShapeRenderer.ShapeType.Line);
         {
             shapes.setColor(Color.FOREST);
             shapes.polygon(concaveHull.convexVertices.items);
             shapes.setColor(Color.GOLD);
-            shapes.polygon(concaveHull.vertices.items);
+            shapes.polygon(concaveHull.concaveVertices.items);
             shapes.setColor(Color.WHITE);
         }
         shapes.end();
@@ -137,7 +135,7 @@ public class MeshScreen extends BaseScreen {
             shapes.setColor(Color.WHITE);
         }
         shapes.end();
-
+       */
     }
 
     private Vector3 cameraTouchStart = new Vector3();

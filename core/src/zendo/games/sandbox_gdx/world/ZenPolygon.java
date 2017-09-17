@@ -23,7 +23,7 @@ public class ZenPolygon {
 
     public ZenPolygon(FloatArray vertices) {
         if (vertices == null) {
-            throw new GdxRuntimeException("Cannot createConvexHullPolygon from null vertices");
+            throw new GdxRuntimeException("Cannot createConvexHullPolygon from null concaveVertices");
         }
         this.vertices = new FloatArray(vertices.shrink());
 
