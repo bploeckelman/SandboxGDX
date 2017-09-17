@@ -3,6 +3,7 @@ package zendo.games.sandbox_gdx;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import zendo.games.sandbox_gdx.screens.BaseScreen;
+import zendo.games.sandbox_gdx.screens.MeshScreen;
 import zendo.games.sandbox_gdx.screens.TestScreen;
 import zendo.games.sandbox_gdx.utils.Assets;
 
@@ -21,7 +22,7 @@ public class SandboxGdx extends ApplicationAdapter {
 		} while (progress != 1f);
 		sandbox = this;
 
-		setScreen(new TestScreen());
+		setScreen(new MeshScreen());
 	}
 
 	@Override

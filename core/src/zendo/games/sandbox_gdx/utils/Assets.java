@@ -25,6 +25,7 @@ public class Assets {
     public static AssetManager mgr;
     public static TweenManager tween;
     public static SpriteBatch batch;
+    public static PolygonSpriteBatch polys;
     public static ShapeRenderer shapes;
     public static BitmapFont font;
     public static GlyphLayout glyphLayout;
@@ -32,6 +33,8 @@ public class Assets {
     public static Texture testTexture;
     public static Texture whitePixel;
     public static Texture circleTexture;
+
+    public static TextureRegion whitePixelRegion;
 
     public static boolean initialized;
 
@@ -65,6 +68,7 @@ public class Assets {
         //...
 
         batch = new SpriteBatch();
+        polys = new PolygonSpriteBatch();
         shapes = new ShapeRenderer();
         glyphLayout = new GlyphLayout();
     }
@@ -78,6 +82,8 @@ public class Assets {
         whitePixel = mgr.get("white-pixel.png");
         circleTexture = mgr.get("circle.png");
 
+        whitePixelRegion = new TextureRegion(whitePixel);
+
         font = new BitmapFont(Gdx.files.internal("fonts/emulogic-16pt.fnt"));
         font.getData().markupEnabled = true;
 
@@ -87,6 +93,7 @@ public class Assets {
 
     public static void dispose() {
         batch.dispose();
+        polys.dispose();
         shapes.dispose();
         font.dispose();
         mgr.clear();

@@ -15,19 +15,21 @@ public class BlueNoiseGenerator {
 
     private int numCreateAttempts;
     private int numBoundsSamples;
+    private int maxSamples;
     private float annulusRadius;
     private List<Vector2> samples;
     private Rectangle bounds;
 
-    public BlueNoiseGenerator(Rectangle bounds, int numBoundsSamples) {
-        this(default_annulus_radius, default_create_attempts, bounds, numBoundsSamples);
+    public BlueNoiseGenerator(Rectangle bounds, int numBoundsSamples, int maxSamples) {
+        this(default_annulus_radius, default_create_attempts, bounds, numBoundsSamples, maxSamples);
     }
 
-    public BlueNoiseGenerator(float annulusRadius, int numCreateAttempts, Rectangle bounds, int numBoundsSamples) {
+    public BlueNoiseGenerator(float annulusRadius, int numCreateAttempts, Rectangle bounds, int numBoundsSamples, int maxSamples) {
         this.annulusRadius = annulusRadius;
         this.numCreateAttempts = numCreateAttempts;
         this.bounds = bounds;
         this.numBoundsSamples = numBoundsSamples;
+        this.maxSamples = maxSamples;
         generate();
     }
 
@@ -55,9 +57,10 @@ public class BlueNoiseGenerator {
             }
         }
 
+        int numCreated = 0;
         List<Vector2> activeList = new ArrayList<Vector2>();
         activeList.add(initialSample);
-        while (activeList.size() > 0) {
+        while (activeList.size() > 0 && numCreated < maxSamples) {
             int lastActiveIndex = activeList.size() - 1;
             int currentActiveIndex = MathUtils.random(lastActiveIndex);
             Collections.swap(activeList,  lastActiveIndex, currentActiveIndex);
@@ -87,6 +90,7 @@ public class BlueNoiseGenerator {
                         samples.add(newSample);
                         activeList.add(newSample);
                         didCreateSample = true;
+                        numCreated++;
                     }
                 }
             }
