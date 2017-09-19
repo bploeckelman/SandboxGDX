@@ -9,39 +9,164 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.IntArray;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class ConcaveHull {
 
+
+
+
+    /*
     public FloatArray convexVertices;
     public FloatArray concaveVertices;
     public FloatArray vertices;
+    public IntArray innerPoints;
+    */
 
     public class Edge {
+        private final FloatArray vertices;
         public int index1;
         public int index2;
-        public Edge(int index1, int index2) {
+
+        public Edge(int index1, int index2, FloatArray vertices) {
+            this.vertices = vertices;
             this.index1 = index1;
             this.index2 = index2;
         }
+
         public Edge(Edge edge) {
+            this.vertices = edge.vertices;
             this.index1 = edge.index1;
             this.index2 = edge.index2;
         }
+
+        public float length() {
+            float e1_p1x = vertices.get(index1 * 2);
+            float e1_p1y = vertices.get(index1 * 2 + 1);
+            float e1_p2x = vertices.get(index2 * 2);
+            float e1_p2y = vertices.get(index2 * 2 + 1);
+            float e1_dx = e1_p2x - e1_p1x;
+            float e1_dy = e1_p2y - e1_p1y;
+            return (float) Math.sqrt(e1_dx * e1_dx + e1_dy * e1_dy);
+        }
+
         @Override
         public boolean equals(Object other) {
             if (!(other instanceof Edge)) return false;
             final Edge edge = (Edge) other;
             return (this.index1 == edge.index1
-                 && this.index2 == edge.index2);
+                    && this.index2 == edge.index2
+                    && this.vertices == edge.vertices);
         }
     }
-    public LinkedList<Edge> convexHullEdges;
-    public LinkedList<Edge> concaveHullEdges;
-    public IntArray innerPoints;
+
+    LinkedList<Edge> convexHullEdges;
+    LinkedList<Edge> concaveHullEdges;
+
+
+    FloatArray convexHullVertices;
+    IntArray convexHullIndices;
+    FloatArray vertices;
+    IntArray innerPoints;
+
 
     public ConcaveHull(List<Vector2> pointsList, float N) {
+        // Copy pointsList to FloatArray for convex hull generation
+        vertices = new FloatArray(pointsList.size() * 2);
+        for (Vector2 point : pointsList) {
+            vertices.addAll(point.x, point.y);
+        }
+        vertices.shrink();
+
+        // Compute convex hull vertices / indices
+        final ConvexHull convexHull = new ConvexHull();
+        convexHullVertices = new FloatArray(convexHull.computePolygon(vertices, false).shrink());
+        convexHullIndices = new IntArray(convexHull.computeIndices(vertices, false, false).shrink());
+
+        // Collect non-boundary points
+        innerPoints = new IntArray();
+        for (int i = 0; i < vertices.size; i += 2) {
+            float vx = vertices.get(i);
+            float vy = vertices.get(i + 1);
+
+            boolean isPointInConvexHull = false;
+            for (int j = 0; j < convexHullVertices.size; j += 2) {
+                float cvx = convexHullVertices.get(j);
+                float cvy = convexHullVertices.get(j + 1);
+                if (vx == cvx && vy == cvy) {
+                    isPointInConvexHull = true;
+                }
+            }
+
+            if (!isPointInConvexHull) {
+                innerPoints.add(i / 2);
+            }
+        }
+        innerPoints.shrink();
+
+        // Generate convex hull edge list
+        convexHullEdges = new LinkedList<Edge>();
+        for (int i = 0; i < convexHullIndices.size - 1; ++i) {
+            convexHullEdges.add(new Edge(convexHullIndices.get(i), convexHullIndices.get(i + 1), vertices));
+        }
+
+        // Sort working edge list by edge length
+        Comparator<Edge> edgeLengthComparator = new Comparator<Edge>() {
+            @Override
+            public int compare(Edge edge1, Edge edge2) {
+                return Float.compare(edge2.length(), edge1.length());
+            }
+        };
+
+        // Process edges
+        concaveHullEdges = new LinkedList<Edge>();
+        LinkedList<Edge> edges = new LinkedList<Edge>(convexHullEdges);
+        while (!edges.isEmpty()) {
+            Collections.sort(edges, edgeLengthComparator);
+            Edge edge = edges.pop();
+            Gdx.app.log("ProcessingEdges", "edge: " + edge.length());
+
+            // TODO: Calculate local max distance d for edges
+
+            // TODO: if (edge.length() > d) {
+            // TODO: Find the point p : innerPoints with the smallest max angle 'a'
+            // TODO: if a is small enough, create edges edge1, edge2 between p and edge
+            // TODO: if edge1 and edge2 don't intersect any other edge,
+            // TODO:   add edge1, edge2 to edges
+            // TODO:   remove point p from innerPoints
+        }
+        // TODO: if edge1 and edge2 was not added to edges
+        // TODO:   add edge to list concaveHullEdges
+        Gdx.app.log("FOO", "STOP");
+    }
+
+/*
+Data: list A with edges for the convex hull
+Result: list B with edges for a concave hull
+
+Sort list A after the length of the edges;
+
+while list A is not empty
+    Select the longest edge e from list A;
+    Remove edge e from list A;
+
+    Calculate local maximum distance d for edges;
+    if length of edge is larger than distance d
+        Find the point p with the smallest maximum angle a;
+        if angle a is small enough and point p is not on the boundary
+            Create edges e2 and e3 between point p and endpoints of edge e;
+
+        if edge e2 and e3 don't intersect any other edge
+            Add edge e2 and e3 to list A;
+            Set point p to be on the boundary;
+
+    if edge e2 and e3 was not added to list A
+    Add edge e to list B;
+*/
+
+
+/*
+    public void secondImplementation(List<Vector2> pointsList, float N) {
         // Copy pointsList to FloatArray for convex hull generation
         vertices = new FloatArray(pointsList.size() * 2);
         for (Vector2 point : pointsList) {
@@ -111,54 +236,126 @@ public class ConcaveHull {
             // Find nearest inner point p_k from edge (c_i1, c_i2)
             // NOTE: p_k should _not_ be closer to neighbor edges than to (c_i1, c_i2)
             int p_i = findNearestInnerPointFromEdge(innerPoints, vertices, edge);
-            float p_kx = vertices.get(p_i * 2);
-            float p_ky = vertices.get(p_i * 2 + 1);
+            if (p_i > -1) {
+                float p_kx = vertices.get(p_i * 2);
+                float p_ky = vertices.get(p_i * 2 + 1);
 
-            //   calculate eh = D(c_i1, c_i2); // the length of the edge
-            float eh = D(c_i1x, c_i1y, c_i2x, c_i2y);
-            //   calculate dd = DD(p_k, {c_i1, c_i2});
-            FloatArray q = new FloatArray(new float[]{c_i1x, c_i1y, c_i2x, c_i2y});
-            float dd = DD(p_kx, p_ky, q);
-            float n = eh / dd;
+                //   calculate eh = D(c_i1, c_i2); // the length of the edge
+                float eh = D(c_i1x, c_i1y, c_i2x, c_i2y);
+                //   calculate dd = DD(p_k, {c_i1, c_i2});
+                FloatArray q = new FloatArray(new float[]{c_i1x, c_i1y, c_i2x, c_i2y});
+                float dd = DD(p_kx, p_ky, q);
+                float n = eh / dd;
 
-            //   if (eh / dd) > N // digging process
-            if (n > N) {
-                // create new edges (c1,p) and (p, c2)
-                Edge edge_c1p = new Edge(edge.index1, p_i);
-                Edge edge_c2p = new Edge(p_i, edge.index2);
+                //   if (eh / dd) > N // digging process
+                if (n > N) {
+                    // create new edges (c1,p) and (p, c2)
+                    Edge edge_c1p = new Edge(edge.index1, p_i);
+                    Edge edge_c2p = new Edge(p_i, edge.index2);
 
-                // insert new edges into tail of edgeList for later processing
-                edgeList.addLast(edge_c1p);
-                edgeList.addLast(edge_c2p);
+                    // insert new edges into tail of edgeList for later processing
+                    edgeList.addLast(edge_c1p);
+                    edgeList.addLast(edge_c2p);
 
-                // replace current edge from concaveList with new edges
-                int index = concaveHullEdges.indexOf(edge);
-                concaveHullEdges.add(index + 1, edge_c1p);
-                concaveHullEdges.add(index + 2, edge_c2p);
-                concaveHullEdges.remove(index);
+                    // replace current edge from concaveList with new edges
+                    int index = concaveHullEdges.indexOf(edge);
+                    concaveHullEdges.add(index + 1, edge_c1p);
+                    concaveHullEdges.add(index + 2, edge_c2p);
+                    concaveHullEdges.remove(index);
 
-                // delete current edge from ConcaveList
-                edgeList.remove(edge);
+                    // delete current edge from ConcaveList
+                    edgeList.remove(edge);
 
-                // remove p_i from innerPoints list
-                innerPoints.removeValue(p_i);
-                innerPoints.shrink();
+                    // remove p_i from innerPoints list
+                    innerPoints.removeValue(p_i);
+                    innerPoints.shrink();
+                } else {
+                    // remove current edge from edgeList
+                    edgeList.remove(edge);
+                }
             } else {
                 // remove current edge from edgeList
                 edgeList.remove(edge);
             }
         }
     }
+*/
 
     private int findNearestInnerPointFromEdge(IntArray innerPoints, FloatArray vertices, Edge edge) {
-        float c_i1x = vertices.get(edge.index1 * 2);
-        float c_i1y = vertices.get(edge.index1 * 2 + 1);
-        float c_i2x = vertices.get(edge.index2 * 2);
-        float c_i2y = vertices.get(edge.index2 * 2 + 1);
+        final float c_i1x = vertices.get(edge.index1 * 2);
+        final float c_i1y = vertices.get(edge.index1 * 2 + 1);
+        final float c_i2x = vertices.get(edge.index2 * 2);
+        final float c_i2y = vertices.get(edge.index2 * 2 + 1);
+
+        /*
+        // TODO: only consider innerPoints that are closer to 'edge' than any other edge in the current list
+        IntArray innerPointIndicesToConsider = new IntArray();
+        for (int i = 0; i < innerPoints.size; ++i) {
+            float px = vertices.get(innerPoints.get(i) * 2);
+            float py = vertices.get(innerPoints.get(i) * 2 + 1);
+
+            float dist = DE(px, py, c_i1x, c_i1y, c_i2x, c_i2y);
+            boolean isCloser = true;
+            for (Edge otherEdge : concaveHullEdges) {
+                if (edge == otherEdge) continue;
+
+                float e_1x = vertices.get(otherEdge.index1 * 2);
+                float e_1y = vertices.get(otherEdge.index1 * 2 + 1);
+                float e_2x = vertices.get(otherEdge.index2 * 2);
+                float e_2y = vertices.get(otherEdge.index2 * 2 + 1);
+
+                float d = DE(px, py, e_1x, e_1y, e_2x, e_2y);
+                if (d < dist) {
+                    isCloser = false;
+                    break;
+                }
+            }
+
+            if (isCloser) {
+                innerPointIndicesToConsider.add(i);
+            }
+        }
+        */
+        // TODO: sort points by distance to edge then evaluate them in that order to find a candidate
+        Integer[] sortedInnerPoints = new Integer[innerPoints.size];
+        for (int i = 0; i < innerPoints.size; ++i) {
+            sortedInnerPoints[i] = innerPoints.get(i);
+        }
+        final FloatArray verts = vertices;
+        Arrays.sort(sortedInnerPoints, new Comparator<Integer>(){
+            @Override
+            public int compare(Integer i1, Integer i2) {
+                float p1_x = verts.get(i1 * 2);
+                float p1_y = verts.get(i1 * 2 + 1);
+                float p2_x = verts.get(i2 * 2);
+                float p2_y = verts.get(i2 * 2 + 1);
+                float p1_dist = DE(p1_x, p1_y, c_i1x, c_i1y, c_i2x, c_i2y);
+                float p2_dist = DE(p2_x, p2_y, c_i1x, c_i1y, c_i2x, c_i2y);
+                return Float.compare(p1_dist, p2_dist);
+            }
+        });
+
 
         int minDIndex = -1;
         float minD = Float.MAX_VALUE;
+        for (int i = 0; i < sortedInnerPoints.length; ++i) {
+
+            float s_px = vertices.get(sortedInnerPoints[i] * 2);
+            float s_py = vertices.get(sortedInnerPoints[i] * 2 + 1);
+
+            float D = DE(s_px, s_py, c_i1x, c_i1y, c_i2x, c_i2y);
+            if (D < minD) {
+                minD = D;
+                minDIndex = i;
+            }
+        }
+
+        return (minDIndex == -1) ? -1 : sortedInnerPoints[minDIndex];
+
+        /*
         for (int i = 0; i < innerPoints.size; ++i) {
+//            if (!innerPointIndicesToConsider.contains(i)) continue;
+
             float s_px = vertices.get(innerPoints.get(i) * 2);
             float s_py = vertices.get(innerPoints.get(i) * 2 + 1);
 
@@ -168,7 +365,9 @@ public class ConcaveHull {
                 minDIndex = i;
             }
         }
-        return (minDIndex < 0) ? -1 : innerPoints.get(minDIndex);
+
+        return (minDIndex == -1) ? -1 : innerPoints.get(minDIndex);
+        */
     }
 
     public void renderConvexHullPoints(ShapeRenderer shapes) {
@@ -176,9 +375,9 @@ public class ConcaveHull {
         {
             shapes.setColor(Color.CYAN);
             final float circle_radius = 2f;
-            for (int i = 0; i < convexVertices.size; i += 2) {
-                float px = convexVertices.get(i);
-                float py = convexVertices.get(i+1);
+            for (int i = 0; i < convexHullVertices.size; i += 2) {
+                float px = convexHullVertices.get(i);
+                float py = convexHullVertices.get(i+1);
                 shapes.circle(px, py, circle_radius);
             }
             shapes.setColor(Color.ORANGE);
@@ -227,7 +426,7 @@ public class ConcaveHull {
         shapes.end();
     }
 
-
+/*
     public void firstImplementation(Array<Vector2> pointsList, float N) {
         // Copy source points list items into a FloatArray
         pointsList.shrink();
@@ -341,6 +540,7 @@ public class ConcaveHull {
         //        if (length(e_i) / (decision_dist) > N) {
         //          do the dig
     }
+*/
 
     private int findNearestInnerPointFromEdge(FloatArray sourcePointsExcludingConvexPoints,
                                               FloatArray convexList, int i1, int i2,

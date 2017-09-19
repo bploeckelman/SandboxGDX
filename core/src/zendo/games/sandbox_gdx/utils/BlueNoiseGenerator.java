@@ -41,6 +41,7 @@ public class BlueNoiseGenerator {
         samples = new ArrayList<Vector2>();
         samples.add(initialSample);
 
+        /*
         if (numBoundsSamples > 0) {
             final int intervals = numBoundsSamples;
             final float interval_width = bounds.width / intervals;
@@ -56,11 +57,12 @@ public class BlueNoiseGenerator {
                 samples.add(new Vector2(bounds.x + bounds.width, bounds.y + y));
             }
         }
+        */
 
         int numCreated = 0;
         List<Vector2> activeList = new ArrayList<Vector2>();
         activeList.add(initialSample);
-        while (activeList.size() > 0 && numCreated < maxSamples) {
+        while (activeList.size() > 0 && samples.size() < maxSamples) {
             int lastActiveIndex = activeList.size() - 1;
             int currentActiveIndex = MathUtils.random(lastActiveIndex);
             Collections.swap(activeList,  lastActiveIndex, currentActiveIndex);

@@ -37,7 +37,7 @@ public class MeshScreen extends BaseScreen {
         polys = Assets.polys;
         polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-        final int num_samples = 10;
+        final int num_samples = 100;
         final int num_boundary_samples = 0;
         final float width = 100;
         final float height = 100;
@@ -60,7 +60,7 @@ public class MeshScreen extends BaseScreen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-            final int num_samples = 10;
+            final int num_samples = 100;
             final int num_boundary_samples = 0;
             final float width = 100;
             final float height = 100;
