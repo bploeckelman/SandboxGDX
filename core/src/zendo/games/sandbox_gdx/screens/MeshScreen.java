@@ -18,6 +18,7 @@ import zendo.games.sandbox_gdx.utils.ConcaveHull;
 import zendo.games.sandbox_gdx.utils.Config;
 import zendo.games.sandbox_gdx.world.ZenPolygon;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MeshScreen extends BaseScreen {
@@ -32,19 +33,31 @@ public class MeshScreen extends BaseScreen {
 
     float N = 1.5f;
 
+    final int num_samples = 10;
+    final int num_boundary_samples = 0;
+    final float width = 100;
+    final float height = 100;
+
+    List<Vector2> testSamples;
+
     public MeshScreen() {
+        testSamples = new ArrayList<Vector2>();
+        testSamples.add(new Vector2(-10f, -10f));
+        testSamples.add(new Vector2( 10f, -10f));
+        testSamples.add(new Vector2( 15f,  10f));
+        testSamples.add(new Vector2(-15f,  10f));
+        testSamples.add(new Vector2(  0f,   8f));
+        testSamples.add(new Vector2(  0f,   -8f));
+
         shapes = Assets.shapes;
         polys = Assets.polys;
         polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-        final int num_samples = 100;
-        final int num_boundary_samples = 0;
-        final float width = 100;
-        final float height = 100;
-        final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
-        BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
-        this.concaveSamples = pointsGenerator.getSamples();
-        concaveHull = new ConcaveHull(concaveSamples, N);
+//        final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
+//        BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
+//        this.concaveSamples = pointsGenerator.getSamples();
+//        concaveHull = new ConcaveHull(concaveSamples, N);
+        concaveHull = new ConcaveHull(testSamples, N);
 
         camera.translate(-camera.viewportWidth / 2f, -camera.viewportHeight / 2f);
         camera.zoom -= 0.5f;
@@ -60,10 +73,6 @@ public class MeshScreen extends BaseScreen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             polygon = ZenPolygon.createConvexHullPolygon(generateSamplePoints());
 
-            final int num_samples = 100;
-            final int num_boundary_samples = 0;
-            final float width = 100;
-            final float height = 100;
             final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
             BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
             concaveSamples = pointsGenerator.getSamples();
@@ -98,7 +107,9 @@ public class MeshScreen extends BaseScreen {
         shapes.setProjectionMatrix(camera.combined);
         concaveHull.renderConvexHull(shapes);
         concaveHull.renderConcaveHull(shapes);
+        concaveHull.renderInnerPoints(shapes);
         concaveHull.renderConvexHullPoints(shapes);
+        concaveHull.renderConcaveHullPoints(shapes);
 
         /*
         polys.setProjectionMatrix(camera.combined);

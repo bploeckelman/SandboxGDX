@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.ConvexHull;
+import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
@@ -66,6 +68,7 @@ public class ConcaveHull {
 
     FloatArray convexHullVertices;
     IntArray convexHullIndices;
+    IntArray concaveHullIndices;
     FloatArray vertices;
     IntArray innerPoints;
 
@@ -117,6 +120,7 @@ public class ConcaveHull {
                 return Float.compare(edge2.length(), edge1.length());
             }
         };
+        // Sort inner points list by distance to edge
 
         // Process edges
         concaveHullEdges = new LinkedList<Edge>();
@@ -127,17 +131,141 @@ public class ConcaveHull {
             Gdx.app.log("ProcessingEdges", "edge: " + edge.length());
 
             // TODO: Calculate local max distance d for edges
+            // For now, just set a standard max length
+            float d = 19f;
 
-            // TODO: if (edge.length() > d) {
-            // TODO: Find the point p : innerPoints with the smallest max angle 'a'
-            // TODO: if a is small enough, create edges edge1, edge2 between p and edge
-            // TODO: if edge1 and edge2 don't intersect any other edge,
-            // TODO:   add edge1, edge2 to edges
-            // TODO:   remove point p from innerPoints
+            Edge edge1, edge2;
+            boolean didAddNewEdges = false;
+            if (edge.length() > d) {
+                // Fetch the vertices for edge
+                final float e1_x = vertices.items[edge.index1 * 2];
+                final float e1_y = vertices.items[edge.index1 * 2 + 1];
+                final float e2_x = vertices.items[edge.index2 * 2];
+                final float e2_y = vertices.items[edge.index2 * 2 + 1];
+
+                // Sort  ----------------------------------------------------
+                // Sort points by distance to edge then evaluate them in that order to find a candidate
+                Integer[] sortedInnerPoints = new Integer[innerPoints.size];
+                for (int i = 0; i < innerPoints.size; ++i) {
+                    sortedInnerPoints[i] = innerPoints.get(i);
+                }
+                final FloatArray verts = vertices;
+                Arrays.sort(sortedInnerPoints, new Comparator<Integer>(){
+                    @Override
+                    public int compare(Integer i1, Integer i2) {
+                        float p1_x = verts.get(i1 * 2);
+                        float p1_y = verts.get(i1 * 2 + 1);
+                        float p2_x = verts.get(i2 * 2);
+                        float p2_y = verts.get(i2 * 2 + 1);
+                        float p1_dist = DE(p1_x, p1_y, e1_x, e1_y, e2_x, e2_y);
+                        float p2_dist = DE(p2_x, p2_y, e1_x, e1_y, e2_x, e2_y);
+                        return Float.compare(p1_dist, p2_dist);
+                    }
+                });
+                for (int i = 0; i < sortedInnerPoints.length; ++i) {
+                    float p1_x = verts.get(i * 2);
+                    float p1_y = verts.get(i * 2 + 1);
+
+                    float p1_dist = DE(p1_x, p1_y, e1_x, e1_y, e2_x, e2_y);
+                    Gdx.app.log("DEBUG", "sortedInnerPoints dist to edge: " + p1_dist + ", for edge with length: " + edge.length());
+                }
+
+                // ----------------------------------------------------------
+
+                // Find the point p : innerPoints with the smallest max angle 'a'
+                float minAngle = Float.MAX_VALUE;
+                int minAngleInnerPointsIndex = -1;
+//                for (int i = 0; i < sortedInnerPoints.length; ++i) {
+                for (int i = 0; i < innerPoints.size; ++i) {
+//                    int innerPointIndex = innerPoints.items[i];
+                    int innerPointIndex = sortedInnerPoints[i];
+                    float p_x = vertices.items[innerPointIndex * 2];
+                    float p_y = vertices.items[innerPointIndex * 2 + 1];
+
+                    // Check what angles exist for potential new edges between p and edge
+                    float d1_x = p_x - e1_x;
+                    float d1_y = p_y - e1_y;
+                    float d2_x = p_x - e2_x;
+                    float d2_y = p_y - e2_y;
+                    float angle1 = MathUtils.radiansToDegrees * MathUtils.atan2(d1_y, d1_x);
+                    float angle2 = MathUtils.radiansToDegrees * MathUtils.atan2(d2_y, d2_x);
+                    if (angle1 < 0) angle1 += 360f;
+                    if (angle2 < 0) angle2 += 360f;
+                    float angle = Math.min(angle1, angle2);
+
+                    if (angle < minAngle) {
+                        minAngle = angle;
+                        minAngleInnerPointsIndex = i;
+                    }
+                }
+                Gdx.app.log("DEBUG", "minAngle: " + minAngle);
+
+                // if minAngle is small enough...
+                float minAngleThreshold = 190f; // TODO: determine how to set this value
+                if (minAngle < minAngleThreshold) {
+                    // Create edges edge1, edge2 between p and edge
+                    edge1 = new Edge(edge.index1, innerPoints.items[minAngleInnerPointsIndex], vertices);
+                    edge2 = new Edge(edge.index2, innerPoints.items[minAngleInnerPointsIndex], vertices);
+                    // NOTE: reverse order of indices for edge2?
+
+                    // If edge1 and edge2 don't intersect any other edge...
+                    if (!doEdgesIntersectOtherEdges(edge1, edge2, concaveHullEdges)) {
+                        // add edge1, edge2 to edges
+                        edges.add(edge1);
+                        edges.add(edge2);
+                        // remove point p from innerPoints
+                        innerPoints.removeIndex(minAngleInnerPointsIndex);
+                        didAddNewEdges = true;
+                        Gdx.app.log("ProcessingEdges", "added to list: Edge@" + System.identityHashCode(edge1) + ", Edge@" + System.identityHashCode(edge2));
+                    }
+                }
+            }
+
+            // if edge1 and edge2 was not added to edges
+            if (!didAddNewEdges) {
+                // add edge to list concaveHullEdges
+                concaveHullEdges.add(edge);
+                Gdx.app.log("ProcessingEdges", "(did not dig) added to hull: Edge@" + System.identityHashCode(edge));
+            }
         }
-        // TODO: if edge1 and edge2 was not added to edges
-        // TODO:   add edge to list concaveHullEdges
-        Gdx.app.log("FOO", "STOP");
+        Gdx.app.log("ConcaveHull", "Completed with...\n"
+                + "\t" + convexHullEdges.size() + " convex edges\n"
+                + "\t" + concaveHullEdges.size() + " concave edges\n"
+                + "\t" + innerPoints.size + " remaining interior points");
+
+        concaveHullIndices = new IntArray();
+        for (Edge edge : concaveHullEdges) {
+            if (!concaveHullIndices.contains(edge.index1)) concaveHullIndices.add(edge.index1);
+            if (!concaveHullIndices.contains(edge.index2)) concaveHullIndices.add(edge.index2);
+        }
+    }
+
+    private boolean doEdgesIntersectOtherEdges(Edge edge1, Edge edge2, LinkedList<Edge> edges) {
+        float e1a_x = vertices.items[edge1.index1 * 2];
+        float e1a_y = vertices.items[edge1.index1 * 2 + 1];
+        float e1b_x = vertices.items[edge1.index2 * 2];
+        float e1b_y = vertices.items[edge1.index2 * 2 + 1];
+
+        float e2a_x = vertices.items[edge2.index1 * 2];
+        float e2a_y = vertices.items[edge2.index1 * 2 + 1];
+        float e2b_x = vertices.items[edge2.index2 * 2];
+        float e2b_y = vertices.items[edge2.index2 * 2 + 1];
+
+        for (Edge edge : edges) {
+            float ea_x = vertices.items[edge.index1 * 2];
+            float ea_y = vertices.items[edge.index1 * 2 + 1];
+            float eb_x = vertices.items[edge.index2 * 2];
+            float eb_y = vertices.items[edge.index2 * 2 + 1];
+
+            if (Intersector.intersectSegments(ea_x, ea_y, eb_x, eb_y, e1a_x, e1a_y, e1b_x, e1b_y, null)
+             || Intersector.intersectSegments(ea_x, ea_y, eb_x, eb_y, e2a_x, e2a_y, e2b_x, e2b_y, null)) {
+                Gdx.app.log("DEBUG", "did intersect other edges");
+                return true;
+            }
+        }
+
+        Gdx.app.log("DEBUG", "did not intersect other edges");
+        return false;
     }
 
 /*
@@ -335,7 +463,6 @@ while list A is not empty
             }
         });
 
-
         int minDIndex = -1;
         float minD = Float.MAX_VALUE;
         for (int i = 0; i < sortedInnerPoints.length; ++i) {
@@ -380,14 +507,36 @@ while list A is not empty
                 float py = convexHullVertices.get(i+1);
                 shapes.circle(px, py, circle_radius);
             }
+            shapes.setColor(Color.WHITE);
+        }
+        shapes.end();
+    }
+
+    public void renderConcaveHullPoints(ShapeRenderer shapes) {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        {
+            shapes.setColor(Color.GREEN);
+            final float circle_radius = 1.5f;
+            for (int i = 0; i < concaveHullIndices.size; ++i) {
+                float px = vertices.get(concaveHullIndices.get(i) * 2);
+                float py = vertices.get(concaveHullIndices.get(i) * 2 + 1);
+                shapes.circle(px, py, circle_radius);
+            }
+            shapes.setColor(Color.WHITE);
+        }
+        shapes.end();
+    }
+
+    public void renderInnerPoints(ShapeRenderer shapes) {
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        {
             shapes.setColor(Color.ORANGE);
-            final float inner_point_circle_radius = 1f;
+            final float circle_radius = 1f;
             for (int i = 0; i < innerPoints.size; ++i) {
                 float px = vertices.get(innerPoints.get(i)*2);
                 float py = vertices.get(innerPoints.get(i)*2+1);
-                shapes.circle(px, py, inner_point_circle_radius);
+                shapes.circle(px, py, circle_radius);
             }
-            shapes.setColor(Color.WHITE);
         }
         shapes.end();
     }
