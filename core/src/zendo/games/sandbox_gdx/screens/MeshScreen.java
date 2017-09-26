@@ -48,6 +48,8 @@ public class MeshScreen extends BaseScreen {
         testSamples.add(new Vector2(-15f,  10f));
         testSamples.add(new Vector2(  0f,   8f));
         testSamples.add(new Vector2(  0f,   -8f));
+//        testSamples.add(new Vector2(-11f,  0f));
+//        testSamples.add(new Vector2(11f,  0f));
 
         shapes = Assets.shapes;
         polys = Assets.polys;
