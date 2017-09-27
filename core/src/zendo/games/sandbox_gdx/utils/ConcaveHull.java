@@ -168,7 +168,7 @@ public class ConcaveHull {
 
                 // Collect inner points that are closer to current edge than other edges
                 // TODO: test against working edge list (edges) or current concave edge list?
-                IntArray nearestInnerPoints = findInnerPointsNearestToEdge(edge, concaveHullEdges, innerPoints);
+                IntArray nearestInnerPoints = findInnerPointsNearestToEdge(edge, edges, innerPoints);
 
                 // Find the point p : innerPoints with the smallest max angle 'a'
                 float minAngle = Float.MAX_VALUE;
@@ -191,7 +191,7 @@ public class ConcaveHull {
 
                     if (angle < minAngle) {
                         minAngle = angle;
-                        minAngleInnerPointsIndex = i;
+                        minAngleInnerPointsIndex = innerPointIndex;
                     }
                 }
                 Gdx.app.log("ProcessingEdges", "\tminAngle: " + minAngle);
@@ -200,8 +200,8 @@ public class ConcaveHull {
                 float minAngleThreshold = 190f; // TODO: determine how to set this value
                 if (minAngle < minAngleThreshold) {
                     // Create edges edge1, edge2 between p and edge
-                    edge1 = new Edge(edge.index1, innerPoints.items[minAngleInnerPointsIndex], vertices);
-                    edge2 = new Edge(edge.index2, innerPoints.items[minAngleInnerPointsIndex], vertices);
+                    edge1 = new Edge(edge.index1, minAngleInnerPointsIndex, vertices);
+                    edge2 = new Edge(edge.index2, minAngleInnerPointsIndex, vertices);
                     // NOTE: reverse order of indices for edge2?
 
                     // If edge1 and edge2 don't intersect any other edge...
@@ -210,9 +210,9 @@ public class ConcaveHull {
                         edges.add(edge1);
                         edges.add(edge2);
                         // remove point p from innerPoints
-                        innerPoints.removeIndex(minAngleInnerPointsIndex);
+                        innerPoints.removeValue(minAngleInnerPointsIndex);
                         didAddNewEdges = true;
-                        Gdx.app.log("ProcessingEdges", "\tDIG: Adding edges: " + edge1.toString() + ", " + edge2.toString());
+                        Gdx.app.log("ProcessingEdges", "\tDIG: Adding edges: " + edge1.toString() + ", " + edge2.toString() + "\n\n");
                     }
                 }
             }
@@ -221,7 +221,7 @@ public class ConcaveHull {
             if (!didAddNewEdges) {
                 // add edge to list concaveHullEdges
                 concaveHullEdges.add(edge);
-                Gdx.app.log("ProcessingEdges", "\tNO DIG: Adding edge: " + edge.toString());
+                Gdx.app.log("ProcessingEdges", "\tNO DIG: Adding edge: " + edge.toString() + "\n\n");
             }
         }
         Gdx.app.log("ConcaveHull", "Completed with...\n"
