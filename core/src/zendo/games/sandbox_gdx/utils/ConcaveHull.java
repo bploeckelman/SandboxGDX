@@ -2,6 +2,7 @@ package zendo.games.sandbox_gdx.utils;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.ConvexHull;
 import com.badlogic.gdx.math.Intersector;
@@ -102,6 +103,8 @@ public class ConcaveHull {
     private IntArray concaveHullIndices;
     private IntArray innerPoints;
 
+    private float d = 10f;
+    private float minAngleThreshold = 200;
 
     public ConcaveHull(List<Vector2> pointsList, float N) {
         // Copy pointsList to FloatArray for convex hull generation
@@ -153,8 +156,7 @@ public class ConcaveHull {
             Gdx.app.log("ProcessingEdges", "Current edge: " + edge.toString());
 
             // TODO: Calculate local max distance d for edges
-            // For now, just set a standard max length
-            float d = 19f;
+            // For now, just use a set standard max length
 
             Edge edge1, edge2;
             boolean didAddNewEdges = false;
@@ -197,7 +199,8 @@ public class ConcaveHull {
                 Gdx.app.log("ProcessingEdges", "\tminAngle: " + minAngle);
 
                 // if minAngle is small enough...
-                float minAngleThreshold = 190f; // TODO: determine how to set this value
+                // TODO: determine how to choose this threshold
+                // for now just use a set default value
                 if (minAngle < minAngleThreshold) {
                     // Create edges edge1, edge2 between p and edge
                     edge1 = new Edge(edge.index1, minAngleInnerPointsIndex, vertices);
@@ -368,13 +371,35 @@ public class ConcaveHull {
             shapes.setColor(Color.GREEN);
             final float circle_radius = 1.5f;
             for (int i = 0; i < concaveHullIndices.size; ++i) {
-                float px = vertices.get(concaveHullIndices.get(i) * 2);
-                float py = vertices.get(concaveHullIndices.get(i) * 2 + 1);
+                int index = concaveHullIndices.get(i);
+                float px = vertices.get(index * 2);
+                float py = vertices.get(index * 2 + 1);
                 shapes.circle(px, py, circle_radius);
             }
             shapes.setColor(Color.WHITE);
         }
         shapes.end();
+    }
+
+    /**
+     * Render index numbers for Concave Hull points
+     * @param batch the SpriteBatch to use
+     */
+    public void renderConcaveHullPointIndices(SpriteBatch batch) {
+        batch.begin();
+        {
+            batch.setColor(Color.MAGENTA);
+            Assets.font.getData().setScale(0.2f);
+            for (int i = 0; i < concaveHullIndices.size; ++i) {
+                int index = concaveHullIndices.get(i);
+                float px = vertices.get(index * 2);
+                float py = vertices.get(index * 2 + 1);
+                Assets.font.draw(batch, ""+index, px - 1f, py + 2f);
+            }
+            Assets.font.getData().setScale(1f);
+            batch.setColor(Color.WHITE);
+        }
+        batch.end();
     }
 
     /**
@@ -403,7 +428,7 @@ public class ConcaveHull {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
             shapes.setColor(Color.GOLD);
-            final float line_width = 1f;
+            final float line_width = 0.3f;
             for (Edge edge : convexHullEdges) {
                 float p1_x = vertices.get(edge.index1 * 2);
                 float p1_y = vertices.get(edge.index1 * 2 + 1);
@@ -424,7 +449,7 @@ public class ConcaveHull {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
             shapes.setColor(Color.SALMON);
-            final float line_width = 0.5f;
+            final float line_width = 1f;
             for (Edge edge : concaveHullEdges) {
                 float p1_x = vertices.get(edge.index1 * 2);
                 float p1_y = vertices.get(edge.index1 * 2 + 1);

@@ -33,10 +33,10 @@ public class MeshScreen extends BaseScreen {
 
     float N = 1.5f;
 
-    final int num_samples = 10;
+    final int num_samples = 1000;
     final int num_boundary_samples = 0;
-    final float width = 100;
-    final float height = 100;
+    final float width = 200;
+    final float height = 200;
 
     List<Vector2> testSamples;
 
@@ -99,10 +99,12 @@ public class MeshScreen extends BaseScreen {
         Gdx.gl.glClearColor(Config.bgColor.r, Config.bgColor.g, Config.bgColor.b, Config.bgColor.a);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        batch.setColor(Color.LIGHT_GRAY);
+        batch.setProjectionMatrix(hudCamera.combined);
         batch.begin();
         {
+            batch.setColor(Color.LIGHT_GRAY);
             Assets.font.draw(batch, "N: " + N, 10, 30);
+            batch.setColor(Color.WHITE);
         }
         batch.end();
 
@@ -112,6 +114,9 @@ public class MeshScreen extends BaseScreen {
         concaveHull.renderInnerPoints(shapes);
         concaveHull.renderConvexHullPoints(shapes);
         concaveHull.renderConcaveHullPoints(shapes);
+
+        batch.setProjectionMatrix(camera.combined);
+        concaveHull.renderConcaveHullPointIndices(batch);
 
         /*
         polys.setProjectionMatrix(camera.combined);
