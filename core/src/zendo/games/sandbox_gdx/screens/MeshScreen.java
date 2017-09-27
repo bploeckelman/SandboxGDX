@@ -58,8 +58,8 @@ public class MeshScreen extends BaseScreen {
 //        final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
 //        BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
 //        this.concaveSamples = pointsGenerator.getSamples();
-//        concaveHull = new ConcaveHull(concaveSamples, N);
-        concaveHull = new ConcaveHull(testSamples, N);
+//        concaveHull = new ConcaveHull(concaveSamples);
+        concaveHull = new ConcaveHull(testSamples);
 
         camera.translate(-camera.viewportWidth / 2f, -camera.viewportHeight / 2f);
         camera.zoom -= 0.5f;
@@ -78,7 +78,7 @@ public class MeshScreen extends BaseScreen {
             final Rectangle points_bounds = new Rectangle(-width / 2f, -height / 2f, width, height);
             BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
             concaveSamples = pointsGenerator.getSamples();
-            concaveHull = new ConcaveHull(concaveSamples, N);
+            concaveHull.generateConcaveHull(concaveSamples);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.EQUALS)) {
