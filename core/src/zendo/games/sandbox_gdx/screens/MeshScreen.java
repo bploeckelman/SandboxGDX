@@ -33,7 +33,7 @@ public class MeshScreen extends BaseScreen {
 
     float N = 1.5f;
 
-    final int num_samples = 1000;
+    final int num_samples = 50;
     final int num_boundary_samples = 0;
     final float width = 200;
     final float height = 200;
@@ -47,7 +47,7 @@ public class MeshScreen extends BaseScreen {
         testSamples.add(new Vector2( 15f,  10f));
         testSamples.add(new Vector2(-15f,  10f));
         testSamples.add(new Vector2(  0f,   8f));
-        testSamples.add(new Vector2(  0f,   -8f));
+        testSamples.add(new Vector2(  0f,   -2f));
         testSamples.add(new Vector2(-11f,  0f));
         testSamples.add(new Vector2(11f,  0f));
 
@@ -62,7 +62,7 @@ public class MeshScreen extends BaseScreen {
         concaveHull = new ConcaveHull(testSamples);
 
         camera.translate(-camera.viewportWidth / 2f, -camera.viewportHeight / 2f);
-        camera.zoom -= 0.5f;
+        camera.zoom = 0.22f;
         Gdx.input.setInputProcessor(this);
     }
 
@@ -79,6 +79,11 @@ public class MeshScreen extends BaseScreen {
             BlueNoiseGenerator pointsGenerator = new BlueNoiseGenerator(points_bounds, num_boundary_samples, num_samples);
             concaveSamples = pointsGenerator.getSamples();
             concaveHull.generateConcaveHull(concaveSamples);
+
+            Rectangle bounds = concaveHull.getMinRect();
+            camera.position.x = bounds.x + bounds.width  / 2f;
+            camera.position.y = bounds.y + bounds.height / 2f;
+            camera.update();
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.EQUALS)) {
@@ -111,12 +116,18 @@ public class MeshScreen extends BaseScreen {
         shapes.setProjectionMatrix(camera.combined);
         concaveHull.renderConvexHull(shapes);
         concaveHull.renderConcaveHull(shapes);
-        concaveHull.renderInnerPoints(shapes);
+//        concaveHull.renderInnerPoints(shapes);
         concaveHull.renderConvexHullPoints(shapes);
         concaveHull.renderConcaveHullPoints(shapes);
 
-        batch.setProjectionMatrix(camera.combined);
-        concaveHull.renderConcaveHullPointIndices(batch);
+        shapes.begin(ShapeRenderer.ShapeType.Line);
+        {
+            shapes.rect(concaveHull.bounds.x, concaveHull.bounds.y, concaveHull.bounds.width, concaveHull.bounds.height);
+        }
+        shapes.end();
+
+//        batch.setProjectionMatrix(camera.combined);
+//        concaveHull.renderConcaveHullPointIndices(batch);
 
         /*
         polys.setProjectionMatrix(camera.combined);

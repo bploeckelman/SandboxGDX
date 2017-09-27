@@ -4,10 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.ConvexHull;
-import com.badlogic.gdx.math.Intersector;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.IntArray;
 
@@ -102,9 +99,10 @@ public class ConcaveHull {
     private IntArray concaveHullIndices;
     private IntArray interiorPoints;
 
-    private static final float d = 10f;
-    private static final float minAngleThreshold = 200;
+    public Rectangle bounds;
 
+    private static final float d = 15f;
+    private static final float maxInteriorAngleThreshold = 100f;
 
     public ConcaveHull(List<Vector2> pointsList) {
         convexHullEdges = new LinkedList<Edge>();
@@ -114,6 +112,7 @@ public class ConcaveHull {
         convexHullIndices = new IntArray();
         concaveHullIndices = new IntArray();
         interiorPoints = new IntArray();
+        bounds = new Rectangle();
 
         generateConcaveHull(pointsList);
     }
@@ -195,36 +194,43 @@ public class ConcaveHull {
                 // TODO: test against working edge list (edges) or current concave edge list?
                 IntArray nearestInnerPoints = findInnerPointsNearestToEdge(edge, edges, interiorPoints);
 
+                // TODO: could just sort the nearestInnerPoints array now that they are all local to edge if dist is important
                 // Find the point p : interiorPoints with the smallest max angle 'a'
-                float minAngle = Float.MAX_VALUE;
+                float maxInteriorAngle = Float.MIN_VALUE;
                 int minAngleInnerPointsIndex = -1;
                 for (int i = 0; i < nearestInnerPoints.size; ++i) {
+                    // Check what angles exist for potential new edges between p and edge
                     int innerPointIndex = nearestInnerPoints.get(i);
                     float p_x = vertices.items[innerPointIndex * 2];
                     float p_y = vertices.items[innerPointIndex * 2 + 1];
 
-                    // Check what angles exist for potential new edges between p and edge
-                    float d1_x = p_x - e1_x;
-                    float d1_y = p_y - e1_y;
-                    float d2_x = p_x - e2_x;
-                    float d2_y = p_y - e2_y;
-                    float angle1 = MathUtils.radiansToDegrees * MathUtils.atan2(d1_y, d1_x);
-                    float angle2 = MathUtils.radiansToDegrees * MathUtils.atan2(d2_y, d2_x);
-                    if (angle1 < 0) angle1 += 360f;
-                    if (angle2 < 0) angle2 += 360f;
-                    float angle = Math.min(angle1, angle2);
 
-                    if (angle < minAngle) {
-                        minAngle = angle;
+                    // Find max interior angle of p-e1-e2 vs p-e2-e1
+                    Vector2 p  = new Vector2(p_x, p_y);
+                    Vector2 e1 = new Vector2(e1_x, e1_y);
+                    Vector2 e2 = new Vector2(e2_x, e2_y);
+
+                    Vector2 v1a = p .cpy().sub(e1).nor();
+                    Vector2 v1b = e2.cpy().sub(e1).nor();
+                    float angle1 = Math.abs(v1a.angle(v1b));
+
+                    Vector2 v2a = p .cpy().sub(e2).nor();
+                    Vector2 v2b = e1.cpy().sub(e2).nor();
+                    float angle2 = Math.abs(v2a.angle(v2b));
+
+                    float angle = Math.max(angle1, angle2);
+
+                    if (angle > maxInteriorAngle) {
+                        maxInteriorAngle = angle;
                         minAngleInnerPointsIndex = innerPointIndex;
                     }
                 }
-                Gdx.app.log("ProcessingEdges", "\tminAngle: " + minAngle);
+                Gdx.app.log("ProcessingEdges", "\tmaxInteriorAngle: " + maxInteriorAngle);
 
                 // if minAngle is small enough...
                 // TODO: determine how to choose this threshold
                 // for now just use a set default value
-                if (minAngle < minAngleThreshold) {
+                if (maxInteriorAngle < maxInteriorAngleThreshold && minAngleInnerPointsIndex != -1) {
                     // Create edges edge1, edge2 between p and edge
                     edge1 = new Edge(edge.index1, minAngleInnerPointsIndex, vertices);
                     edge2 = new Edge(edge.index2, minAngleInnerPointsIndex, vertices);
@@ -255,11 +261,14 @@ public class ConcaveHull {
                 + "\t" + concaveHullEdges.size() + " concave edges\n"
                 + "\t" + interiorPoints.size + " remaining interior points");
 
+
         concaveHullIndices = new IntArray();
         for (Edge edge : concaveHullEdges) {
             if (!concaveHullIndices.contains(edge.index1)) concaveHullIndices.add(edge.index1);
             if (!concaveHullIndices.contains(edge.index2)) concaveHullIndices.add(edge.index2);
         }
+
+        getMinRect();
     }
 
     /**
@@ -359,6 +368,27 @@ public class ConcaveHull {
         return false;
     }
 
+    public Rectangle getMinRect() {
+        if (bounds == null) {
+            bounds = new Rectangle();
+        }
+
+        float minX = Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxX = Float.MIN_VALUE;
+        float maxY = Float.MIN_VALUE;
+        for (int i = 0; i < convexHullVertices.size; i += 2) {
+            float x = convexHullVertices.get(i);
+            float y = convexHullVertices.get(i+1);
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+        }
+        bounds.set(minX, minY, maxX - minX, maxY - minY);
+
+        return bounds;
+    }
 
     // ------------------------------------------------------------------------
     // Render Helpers
@@ -372,7 +402,7 @@ public class ConcaveHull {
     public void renderConvexHullPoints(ShapeRenderer shapes) {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
-            shapes.setColor(Color.CYAN);
+            shapes.setColor(Color.FIREBRICK);
             final float circle_radius = 2f;
             for (int i = 0; i < convexHullVertices.size; i += 2) {
                 float px = convexHullVertices.get(i);
@@ -391,8 +421,8 @@ public class ConcaveHull {
     public void renderConcaveHullPoints(ShapeRenderer shapes) {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
-            shapes.setColor(Color.GREEN);
-            final float circle_radius = 1.5f;
+            shapes.setColor(Color.FOREST);
+            final float circle_radius = 1.25f;
             for (int i = 0; i < concaveHullIndices.size; ++i) {
                 int index = concaveHullIndices.get(i);
                 float px = vertices.get(index * 2);
@@ -460,7 +490,7 @@ public class ConcaveHull {
     public void renderConvexHull(ShapeRenderer shapes) {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
-            shapes.setColor(Color.GOLD);
+            shapes.setColor(Color.RED);
             final float line_width = 0.3f;
             for (Edge edge : convexHullEdges) {
                 float p1_x = vertices.get(edge.index1 * 2);
@@ -481,7 +511,7 @@ public class ConcaveHull {
     public void renderConcaveHull(ShapeRenderer shapes) {
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         {
-            shapes.setColor(Color.SALMON);
+            shapes.setColor(Color.GREEN);
             final float line_width = 1f;
             for (Edge edge : concaveHullEdges) {
                 float p1_x = vertices.get(edge.index1 * 2);
